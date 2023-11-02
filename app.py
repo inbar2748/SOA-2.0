@@ -26,6 +26,7 @@ global skele_image
 BRLengths = []
 contours3 = []
 Logs = []
+CC=[]
 
 
 ######################################################################################################################################################################################
@@ -317,6 +318,12 @@ def find_unique_rows_in_contours(contours2):
 
 def create_segmentation2():
     global CC
+    CC.clear()
+    DD.clear()
+    Angles.clear()
+    Logs.clear()
+    BINOMIAL_LINES.clear()
+
     CC = create_segmentation()
     # Call the function to find unique rows in contours2
     # unique_contours = find_unique_rows_in_contours(CC)
@@ -665,9 +672,10 @@ def write_results():
     Angles, num_groups, gbcount, Mcontours = analyze_and_plot_parallel_branches(DD, angle_threshold=ANG_TH)
     # Modify negative values in Angles
     Angles = [abs(angle) for angle in Angles]
-    # for i in range(len(Angles)):
-    #    if Angles[i] < 0:
-    #        Angles[i] = 360 + Angles[i]
+    print(Angles)
+    for i in range(len(Angles)):
+        if Angles[i] < 0:
+            Angles[i] = 360 + Angles[i]
 
     fig = plt.figure();
     plt.imshow(actual_image)
