@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 from PIL import Image, ImageTk, ImageDraw  # Import ImageDraw from PIL
 from skimage import morphology, measure
 
+from statistical_calc import binomial_distribution
+
 ######################################################################################################################################################################################
 ######################################################################################################################################################################################
 BRANCHLENGTH_THRESHOLD = 5
@@ -398,7 +400,7 @@ def generate_results():
     # ax.invert_yaxis()
     # plt.show()
 
-    fig = plt.figure();
+    fig = plt.figure()
     plt.imshow(actual_image)
     x1, y1 = line_coordinates[0]
     x2, y2 = line_coordinates[1]
@@ -417,7 +419,7 @@ def generate_results():
         ttt = np.unique(XY, axis=0)
         # Plot the fitted line
         plt.plot(XY[:, 0], f, '-y', linewidth=3)
-        plt.title(" Actual Image with overlaid detected Branches")
+        plt.title(" Original Image with overlaid detected Branches")
     plt.show()
 
     ######################################################################################################################################################################################
@@ -433,7 +435,7 @@ def generate_results():
         # Calculate the Euclidean distance between the first and last points
         BranchLen = np.sqrt((p2x - p1x) ** 2 + (p2y - p1y) ** 2)
         # Print the distance
-        print(f"Length of Branch{ii} is   {BranchLen}")
+        print(f"Length of Branch {ii} is {BranchLen}")
         BRLengths.append(BranchLen)
 
         # plt.plot(curve1[:, 0], curve1[:, 1], '.r')
@@ -533,7 +535,7 @@ def analyze_and_plot_parallel_branches(contours, angle_threshold):
     def are_lines_parallel(slope1, slope2, parallel_threshold=0.1):
         return abs(slope1 - slope2) < parallel_threshold
 
-    def group_parallel_branches(contours, angle_threshold=10):
+    def group_parallel_branches(contours, angle_threshold):
         global angles
         global gbcount
 
@@ -545,8 +547,13 @@ def analyze_and_plot_parallel_branches(contours, angle_threshold):
             last_point = contour[-1]
             slope = compute_slope(first_point, last_point)
             angle = np.arctan(slope) * 180 / np.pi
+            if angle < 0:
+                angle = 360 + angle
             angles.append(angle)
 
+        print("Print the values of angles to the console :" ,angles)
+        print("sum all lines: ",len(angles))
+        print( len(contours))
         grouped_branches = {}
         visited = [False] * len(contours)
 
@@ -587,35 +594,38 @@ def analyze_and_plot_parallel_branches(contours, angle_threshold):
 
     # Print parallel group information, including angles, branch coordinates, and branch counts
     for group, branches in parallel_groups.items():
-        print(f"-------------------------Parallel Group information ---------------------------------:")
+        print(f"-------------------------Parallel Group information :---------------------------------:")
         print(f"Number of Parallel Lines in this Group --------: {group_branch_counts[group]}")
         thisgcount = group_branch_counts[group]
         gbcount.append(thisgcount)
         for branch in branches:
-            print(f"  Key {branch}:")
+            print(f"  Key {branch -1}:")
             branch_coordinates = contours[branch - 1]
             first_point = branch_coordinates[0]
             last_point = branch_coordinates[-1]
             slope = compute_slope(first_point, last_point)
             angle = np.arctan(slope) * 180 / np.pi
+            if angle < 0:
+                angle = 360 + angle
+
             print(f"    Angle: {angle:.2f} degrees" + f" First Point: {first_point}" + f" Last Point: {last_point}")
 
-            # Print the cumulative length for the branch
+            """# Print the cumulative length for the branch
             if branch in cumulative_lengths:
                 length = cumulative_lengths[branch]
-                print(f"    Cumulative Length: {length:.2f} units")
+                print(f"    Cumulative Length: {length:.2f} units")"""
 
     # Optionally, visualize the branches as well
     for i, contour in enumerate(contours):
         x, y = contour[:, 0], contour[:, 1]
-        plt.plot(x, y, label=f"Branch {i + 1}")
+        plt.plot(x, y, label=f"Branch {i}")
 
     # option angles check
     for i, angle in enumerate(angles):
-        print(f"Angle {i + 1}: {angle} degrees")
+        print(f"Angle {i}: {angle:.2f} degrees")
 
     return angles, num_parallel_groups, gbcount, contours
-    # Print the values of angles to the console
+
 
 
 ######################################################################################################################################################################################
@@ -646,7 +656,7 @@ def update_slider_value3(slider_var, label):
 ######################################################################################################################################################################################
 
 def write_results():
-    slider_value3 = slider3_var.get()  # Replace with the actual function to get the slider value
+    """slider_value3 = slider3_var.get()  # Replace with the actual function to get the slider value
     # Define a mapping of slider values to threshold values
     threshold_mapping3 = {
         1: 1,
@@ -659,25 +669,21 @@ def write_results():
         8: 30,
         9: 35,
         10: 40
-    }
+    }"""
 
-    # Check if the slider value is in the mapping
+    """# Check if the slider value is in the mapping
     if slider_value3 in threshold_mapping3:
         ANG_TH = threshold_mapping3[slider_value3]
     else:
         # Default threshold value for other cases
-        ANG_TH = 10  # can set a default value here if needed
+        ANG_TH = 10  # can set a default value here if needed"""
+    ANG_TH = 5 if 180 / len(DD) < 36 else (180 / len(DD))
+    print("chosen ANGLE for parallel detecting::", ANG_TH)
 
     # Angles, num_groups, gbcount,Mcontours=analyze_and_plot_parallel_branches(DD, angle_threshold=ANG_TH)
     Angles, num_groups, gbcount, Mcontours = analyze_and_plot_parallel_branches(DD, angle_threshold=ANG_TH)
-    # Modify negative values in Angles
-    Angles = [abs(angle) for angle in Angles]
-    print(Angles)
-    for i in range(len(Angles)):
-        if Angles[i] < 0:
-            Angles[i] = 360 + Angles[i]
 
-    fig = plt.figure();
+    fig = plt.figure()
     plt.imshow(actual_image)
     x1, y1 = line_coordinates[0]
     x2, y2 = line_coordinates[1]
@@ -713,54 +719,19 @@ def write_results():
     plt.title("DETECTED-Total branches== " + str(sum(gbcount)) + ", Arranged into" + str(len(gbcount)) + " groups")
     plt.show()
 
+    ######################################################################################################################################################################################
+    ######################################################################################################################################################################################
+    ######################################################################################################################################################################################
+    ######################################################################################################################################################################################
     print(
         "--------------------------- AFTER MEASURED BRANCH ANALYSIS, NOW BELOW IS THE INFORMATION FOR SIMULATED RANDOM LINES----------------------------------------")
 
-    ######################################################################################################################################################################################
-    ######################################################################################################################################################################################
-    ######################################################################################################################################################################################
-    ######################################################################################################################################################################################
     # Parameters for the binomial distribution
     num_lines = sum(gbcount)
-    n = len(np.unique(gbcount))  # Number of trials
-    p = (1 / n)  # Probability of success in each trial
-
-    def create_binomial_lines(n, p, num_lines):
-
-        # Dimensions of the 2D plane
-        dimensions = 512
-
-        # Initialize an empty list to store line coordinates
-        lines = []
-
-        # Simulate drawing lines based on the binomial distribution
-        for _ in range(num_lines):
-            # Determine the number of successful trials (lines) using the binomial distribution
-            k = np.random.binomial(n, p)
-
-            # Generate random start and end points for a line within the specified dimensions
-            for _ in range(k):
-                start_point = np.random.randint(0, dimensions, 2)
-                end_point = np.random.randint(0, dimensions, 2)
-
-                # Create a NumPy array for the line coordinates
-                line_array = np.array([start_point, end_point])
-
-                # Add the line array to the list
-                lines.append(line_array)
-
-        return lines
-
-    ######################################################################################################################################################################################
-    ######################################################################################################################################################################################
-    ######################################################################################################################################################################################
-    #    BINOMIAL_LINES=create_binomial_lines(n,p,num_lines)
-    #########################################################################################################
-
-    AnglesRANDOM, num_groupsRANDOM, gbcountRANDOM, contoursRANDOM = analyze_and_plot_parallel_branches(BINOMIAL_LINES,
-                                                                                                       angle_threshold=ANG_TH)
-
-    fig = plt.figure();
+    gbcountRANDOM= binomial_distribution(num_lines)
+    #AnglesRANDOM, num_groupsRANDOM, gbcountRANDOM, contoursRANDOM = analyze_and_plot_parallel_branches(BINOMIAL_LINES,angle_threshold=ANG_TH)
+    """ 
+    fig = plt.figure()
     plt.imshow(actual_image)
     x1, y1 = line_coordinates[0]
     x2, y2 = line_coordinates[1]
@@ -771,14 +742,12 @@ def write_results():
         plt.plot(x, y, '-y', linewidth=3)
         plt.title(" Random Branch Estimation Plotted over 2D image")
 
-    plt.show()
+    #plt.show()
+    """
 
     value_countsR = {}
-    for valueR in gbcountRANDOM:
-        if valueR in value_countsR:
-            value_countsR[valueR] += 1
-        else:
-            value_countsR[valueR] = 1
+    for valueR in range(2, len(gbcountRANDOM)):
+            value_countsR[valueR] = gbcountRANDOM[valueR]
 
     # Extract unique values and their frequencies and sort them
     unique_valuesR = sorted(list(value_countsR.keys()))
@@ -792,37 +761,31 @@ def write_results():
     plt.xlabel('Parallel Groups with Branches')
     plt.ylabel('Frequency Count for respective groups')
     plt.title(
-        "RANDOM-Total branches== " + str(sum(gbcountRANDOM)) + ", Arranged into" + str(len(gbcountRANDOM)) + " groups")
+        "RANDOM-Total branches== " + str(num_lines) + ", Arranged into" + str(sum(frequenciesR)) + " groups")
     plt.show()
 
     # Count the frequency of each unique value
     value_counts = {}
-    for value in gbcount:
+    gbcount_sorted = sorted(gbcount)
+    for value in gbcount_sorted:
         if value in value_counts:
             value_counts[value] += 1
         else:
             value_counts[value] = 1
-
-        # Print the value-frequency pairs
-
+    sorted(value_counts)
+    # Print the value-frequency pairs STATISTICS for Measured Classification
     print("STATISTICS for Measured Classification")
+    print("value : frequency")
     for value, frequency in value_counts.items():
-        print(f"{value}:{frequency}")
+        print(f"{value}     :  {frequency}")
 
-    # Count the frequency of each unique value
-    value_countsR = {}
-    for valueR in gbcountRANDOM:
-        if valueR in value_countsR:
-            value_countsR[valueR] += 1
-        else:
-            value_countsR[valueR] = 1
-
-    # Print the value-frequency pairs
+    # Print the value-frequency pairs - STATISTICS for Random Classification
     print("STATISTICS for Random Classification")
-    for valueR, frequency in value_countsR.items():
-        print(f"{valueR}:{frequency}")
+    print("value : frequency")
+    for i in range(2, len(gbcountRANDOM)):
+        print(f'{i}     :  {gbcountRANDOM[i]}')
 
-    disp_final_stats(asli_contours, BINOMIAL_LINES, gbcount, gbcountRANDOM)
+    disp_final_stats(asli_contours, gbcount, gbcountRANDOM)
     ######################################################################################################################################################################################
 
     # Extract the folder path from the file path
@@ -933,16 +896,45 @@ def plot_contours(CC):
 
 
 ######################################################################################################################################################################################
-def disp_final_stats(contours, BINOMIAL_LINES, gbcount, gbcountRANDOM):
+def disp_final_stats(contours, gbcount, gbcountRANDOM):
     all_lines_detected_in_original_image = len(contours)
-    sum_all_measured_lines = len(DD)
-    sum_all_simulation_lines = len(BINOMIAL_LINES)
 
-    PercentagePM = (sum_all_measured_lines / all_lines_detected_in_original_image) * 100
-    PercentagePS = (sum_all_simulation_lines / all_lines_detected_in_original_image) * 100
+    print('\n',
+          "<--------------- Calculation of the percentage of parallelism in relation to the simulation: --------------->",
+          '\n')
+    # simulation
+    sum_all_simulation_lines = 0
+    for i in range(2, len(gbcountRANDOM)):
+        sum_all_simulation_lines += i * gbcountRANDOM[i]
+    PercentagePM = sum_all_simulation_lines / all_lines_detected_in_original_image
+    print("simulation: ", PercentagePM)
+
+    # measured
+    sum_all_measured_lines = 0
+    for i in range(2, len(gbcount)):
+        sum_all_measured_lines += i * (gbcount[i])
+    PercentagePS = sum_all_measured_lines / all_lines_detected_in_original_image
+    print("measured: ", PercentagePS)
+
     PercentagePMS = sum_all_measured_lines / sum_all_simulation_lines
+    print("E\S: ", PercentagePMS)
 
     # Use Counter to count the occurrences of each value
+
+    print('\n', "<---------------  Long - term  parallels of E\S: --------------->", '\n')
+    # simulation with weights - in the long term
+    sum_all_simulation_lines_weights = 0
+    for i in range(2, len(gbcountRANDOM)):
+        sum_all_simulation_lines_weights += i * i * gbcountRANDOM[i]
+
+    # measured with weights - in the long term
+    sum_all_measured_lines_weights = 0
+    for i in range(1, len(gbcount)):
+        sum_all_measured_lines_weights += (i + 1) * (i + 1) * (gbcount[i])
+    LongtermES = sum_all_measured_lines_weights / sum_all_simulation_lines_weights
+    print("Measured (E) with weights)\ Simulation (S) with weights) ratio: ", LongtermES)
+
+    """
     value_counts = Counter(gbcount)
     value_counts_dict = dict(value_counts)
     weights = []
@@ -965,11 +957,11 @@ def disp_final_stats(contours, BINOMIAL_LINES, gbcount, gbcountRANDOM):
     NS = sum(weightsR)
 
     NSERatio = NE / NS
-
+     
     print(f" PM Percentage is ----------- {PercentagePM}")
     print(f" PS Percentage is ............{PercentagePS}")
     print(f" Weights Ratio computed is .... {NSERatio}")
-
+    """
     return
 
 
@@ -1008,8 +1000,8 @@ screen_width = root.winfo_screenwidth()
 screen_height = root.winfo_screenheight()
 
 # Set the window size to fit the screen
-window_width = int(screen_width * 0.7)  # You can adjust the percentage as needed
-window_height = int(screen_height * 0.5)  # You can adjust the percentage as needed
+window_width = int(screen_width * 0.7)
+window_height = int(screen_height * 0.5)
 root.geometry(f"{window_width}x{window_height}")
 
 # Create a frame for buttons and sliders at the bottom
@@ -1037,12 +1029,12 @@ slider2 = tk.Scale(bottom_frame, variable=slider2_var, from_=0, to=10, orient="h
 slider2.pack(side=tk.LEFT)
 slider2_label.pack(side=tk.LEFT)
 
-slider3_label = tk.Label(bottom_frame, text="<=Angle", font=("Arial", 16))
+"""slider3_label = tk.Label(bottom_frame, text="<=Angle", font=("Arial", 16))
 slider3_var = tk.DoubleVar()
 slider3 = tk.Scale(bottom_frame, variable=slider3_var, from_=0, to=10, orient="horizontal",
                    command=lambda _: update_slider_value3(slider3_var, slider3_label))
 slider3.pack(side=tk.LEFT)
-slider3_label.pack(side=tk.LEFT)
+slider3_label.pack(side=tk.LEFT)"""
 
 # Create buttons
 segmentation_button = tk.Button(bottom_frame, text="(2) Create Segmentation", font=("Arial", 16),
