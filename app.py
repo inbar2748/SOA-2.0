@@ -1,3 +1,4 @@
+import csv
 import tkinter as tk
 from tkinter import filedialog
 import cv2
@@ -217,8 +218,11 @@ def create_segmentation():
                 if neighbor_count > 2:
                     branch_points.append((x, y))
 
-        # Create a copy of the right frame image
 
+        # Initialize a counter for the green ellipses
+        green_ellipse_count = 0
+
+        # Create a copy of the right frame image
         # Overlay branch points on the right frame image in blue
         for point in branch_points:
             x, y = point
@@ -230,9 +234,14 @@ def create_segmentation():
             lower_y = min(image_height - 1, x + point_radius)
             draw.ellipse((left_x, upper_y, right_x, lower_y), fill=(0, 255, 0))
 
+            # Increment the counter
+            green_ellipse_count += 1
+
+        # Print the number of green ellipses
+        #print(f'Number of green ellipses: {green_ellipse_count}')
+
         # Convert the right frame image with branch points to PhotoImage
         right_frame_photo = calculate_image_size(image=contour_image)
-
         # Update the displayed image in the right frame
         right_frame.image_label.config(image=right_frame_photo)
         right_frame.image_label.image = right_frame_photo
@@ -336,12 +345,19 @@ def create_segmentation2():
 def save_Framed_images():
     folder_path, file_name_with_extension = os.path.split(file_path)
     file_name_without_extension, file_extension = os.path.splitext(file_name_with_extension)
+
+    # Save the original image
     new_file_savenameOI = file_name_without_extension + "_OriginalImage.png"
-    actual_image.save(new_file_savenameOI)
+    actual_image.save(os.path.join(folder_path, new_file_savenameOI))
+
+    # Save the segmented image
     new_file_savenameSI = file_name_without_extension + "_BW_Segmentation.png"
-    segment_image.save(new_file_savenameSI)
+    segment_image.save(os.path.join(folder_path, new_file_savenameSI))
+
+    # Save the skeletonized image
     new_file_savenameBWS = file_name_without_extension + "_BW_Skeleton.png"
-    skele_image.save(new_file_savenameBWS)
+    skele_image.save(os.path.join(folder_path, new_file_savenameBWS))
+
     print(" ALL Images saved in Base Directory ")
 
 
@@ -517,9 +533,11 @@ def analyze_and_plot_parallel_branches(contours, angle_threshold):
     def group_parallel_branches(contours, angle_threshold):
         global angles
         global gbcount
-
+        global branch_info_list
+        grouped_branches = {}
         angles = []
         gbcount = []
+        branch_info_list = []  # Initialize a list to store branch information
 
         for contour in contours:
             first_point = contour[0]
@@ -529,15 +547,19 @@ def analyze_and_plot_parallel_branches(contours, angle_threshold):
             if angle < 0:
                 angle = 360 + angle
             angles.append(angle)
+            # Create a dictionary for the branch information
+            branch_info = {
+                'First Point': first_point,
+                'Last Point': last_point
+            }
+            # Append the branch information dictionary to the list
+            branch_info_list.append(branch_info)
 
         print("\nsum all lines: ", len(angles))
         #print(len(contours))
         print("Print the values of Angles:" ,angles)
         print("Print the values of Branches Length:", BRLengths,"\n")
 
-
-
-        grouped_branches = {}
 
 
         # Dictionary to store cumulative lengths for each branch
@@ -595,12 +617,23 @@ def analyze_and_plot_parallel_branches(contours, angle_threshold):
 
     print(f"-------------------------Sorted Parallel Group information :---------------------------------:")
     # Print sorted parallel group information, including angles, branch coordinates, and branch counts
+
+    parallel_list_branch = []
+    parallel_list_all_branch = []  # Initialize a list to store branch information
     for group, branches in group_sort_branch.items():
         num_parallel_lines = sorted_group_branch_counts.get(group, 0)
+        if len(branches) > 1:
+            parallel_list_branch.append(branches)
+            parallel_list_all_branch.append(branches)
 
         # Skip groups with zero parallel lines
         if num_parallel_lines == 0:
             continue
+
+        group_info = {
+            'Number of Parallel Lines': sorted_group_branch_counts[group],
+            'Branches': []
+        }
 
         print(f"\nNumber of Parallel Lines in this Group --------: {sorted_group_branch_counts[group]}")
         thisgcount = sorted_group_branch_counts[group]
@@ -622,17 +655,31 @@ def analyze_and_plot_parallel_branches(contours, angle_threshold):
                 length = cumulative_lengths[branch]
                 print(f"    Branch Length: {length:.2f} units")
 
+                branch_info = {
+                    'Key': branch,
+                    'Angle': angle,
+                    'First Point': first_point,
+                    'Last Point': last_point,
+                    'Length': length
+                }
+                # Append the branch information dictionary to the group_info dictionary
+                group_info['Branches'].append(branch_info)
+        # Append the group_info dictionary to the parallel_list_branch list
+        parallel_list_all_branch.append(group_info)
+    print(parallel_list_all_branch)
+
     # Optionally, visualize the branches as well
     plt.figure('Display 2D marked lines based on Image Segmentation')
     for i, contour in enumerate(contours):
         x, y = contour[:, 0], contour[:, 1]
-        #plt.plot(x, y, label=f"Branch {i}")
+        # plt.plot(x, y, label=f"Branch {i}")
         plt.plot(x, y)
         plt.title("2D marked lines based on Image Segmentation")
         # Add text annotation to the left of the graph
         plt.text(x[0], y[0], f"Branch {i}", verticalalignment='center', fontsize=8)
 
-    return angles, num_sorted_parallel_groups, gbcount, contours
+
+    return angles, parallel_list_branch, gbcount, contours, parallel_list_all_branch
 
 
 
@@ -689,8 +736,8 @@ def write_results():
     print("selected ANGLE for parallel detecting::", ANG_TH)
 
     # Angles, num_groups, gbcount,Mcontours=analyze_and_plot_parallel_branches(DD, angle_threshold=ANG_TH)
-    Angles, num_groups, gbcount, Mcontours = analyze_and_plot_parallel_branches(DD, angle_threshold=ANG_TH)
-
+    Angles, parallel_list_branch, gbcount, Mcontours, parallel_list_all_branch = analyze_and_plot_parallel_branches(DD, angle_threshold=ANG_TH)
+    print(parallel_list_branch)
     fig = plt.figure("Measured Branch Estimation on Original Image")
     plt.imshow(actual_image)
     x1, y1 = line_coordinates[0]
@@ -715,14 +762,6 @@ def write_results():
                 value_counts[value] = 1
     sorted(value_counts)
 
-    """# Count the frequency of each unique value
-    value_counts = {}
-    for value in gbcount:
-        if value in value_counts:
-            value_counts[value] += 1
-        else:
-            value_counts[value] = 1"""
-
     # Extract unique values and their frequencies and sort them
     unique_values = sorted(list(value_counts.keys()))
     frequencies = [value_counts[value] for value in unique_values]
@@ -734,7 +773,7 @@ def write_results():
     # Add labels and title
     plt.xlabel('Parallel Groups with Branches')
     plt.ylabel('Frequency Count for respective groups')
-    plt.title("DETECTED-Total branches== " + str(sum(gbcount)) + ", Arranged into" + str(len(gbcount)) + " groups")
+    plt.title("DETECTED-Total branches== " + str(sum(gbcount)) + ", Arranged into" + str(sum(frequencies)) + " groups")
     plt.show()
 
     ######################################################################################################################################################################################
@@ -793,18 +832,48 @@ def write_results():
                 value_counts[value] = 1
     sorted(value_counts)
     # Print the value-frequency pairs STATISTICS for Measured Classification
+    measur_Rparalle_data_list= []
     print("STATISTICS for Measured Classification")
     print("value : frequency")
     for value, frequency in value_counts.items():
         print(f"{value}     :  {frequency}")
+        measur_Rparalle_data_list.append((value, frequency))
 
+    stat_Rparalle_data_list= []
     # Print the value-frequency pairs - STATISTICS for Random Classification
     print("STATISTICS for Random Classification")
     print("value : frequency")
     for i in range(2, len(gbcountRANDOM)):
         print(f'{i}     :  {gbcountRANDOM[i]}')
+        stat_Rparalle_data_list.append((i, gbcountRANDOM[i]))
 
-    disp_final_stats(num_lines, value_counts, gbcountRANDOM)
+    PercentagePS, PercentagePM, PercentagePMS, LongtermES, sum_all_measured_lines, sum_all_simulation_lines = disp_final_stats(num_lines, value_counts, gbcountRANDOM)
+
+    """# Extract relevant data
+    filtered_branches = []
+    for branch in parallel_list_all_branch[1]:
+        if branch.get('Number of Parallel Lines', 0) < 2:
+            filtered_branches.append(branch)
+
+    # Extract lengths and angles
+    lengths = [branch['Length'] for branch in filtered_branches]
+    angles = [branch['Angle'] for branch in filtered_branches]
+
+    # Calculate average and standard deviation
+    average_length = np.mean(lengths)
+    std_dev_length = np.std(lengths)
+
+    average_angle = np.mean(angles)
+    std_dev_angle = np.std(angles)
+
+    # Print results
+    print(f"\nAverage Length: {average_length:.2f}")
+    print(f"Standard Deviation of Length: {std_dev_length:.2f}")
+
+    print(f"\nAverage Angle: {average_angle:.2f}")
+    print(f"Standard Deviation of Angle: {std_dev_angle:.2f}")"""
+
+
     ######################################################################################################################################################################################
 
     # Extract the folder path from the file path
@@ -813,40 +882,103 @@ def write_results():
     new_file_name = file_name_without_extension + ".csv"
     csv_file_path = os.path.join(folder_path, new_file_name)
 
+    #BranchesCompound_df = pd.DataFrame({num_objectsCompound})
+    #BranchesDetached_df = pd.DataFrame({num_objects2})
+    # BP_df = pd.DataFrame(branch_points)
+
     Logs_df = pd.DataFrame(Logs)
     BL_df = pd.DataFrame(BRLengths)
     ANGLE_df = pd.DataFrame(Angles)
-    BP_df = pd.DataFrame(branch_points)
-    BranchesCompound_df = pd.DataFrame({num_objectsCompound})
-    BranchesDetached_df = pd.DataFrame({num_objects2})
+    BP_df = pd.DataFrame(branch_info_list)
     BranchesRetained_df = pd.DataFrame({len(DD)})
+    sumPgroupMeasured_df = pd.DataFrame({sum(frequencies)})
+    sum_all_measured_lines_df = pd.DataFrame({sum_all_measured_lines})
+    sumPgroupSimulation_df = pd.DataFrame({sum(frequenciesR)})
+    sum_all_simulation_lines_df = pd.DataFrame({sum_all_simulation_lines})
+    PercentagePS_df = pd.DataFrame({PercentagePS})
+    PercentagePM_df = pd.DataFrame({PercentagePM})
+    PercentagePMS_df = pd.DataFrame({PercentagePMS})
+    LongtermES_df = pd.DataFrame({LongtermES})
+    parallel_list_branch_df = pd.DataFrame({'Parallels Groups list': [','.join(map(str, inner_list)) for inner_list in parallel_list_branch]})
+    measur_Rparalle_data_list_df = pd.DataFrame(measur_Rparalle_data_list, columns=['VALUE', 'FREQUENCY'])
+    stat_Rparalle_data_list_df = pd.DataFrame(stat_Rparalle_data_list, columns=['VALUE', 'FREQUENCY'])
     FileName_df = pd.DataFrame({file_path})
 
     result_df = pd.concat(
-        [Logs_df, BL_df, ANGLE_df, BP_df, BranchesCompound_df, BranchesDetached_df, BranchesRetained_df, FileName_df],
+        [Logs_df, BL_df, ANGLE_df, BP_df, BranchesRetained_df, sumPgroupMeasured_df,sum_all_measured_lines_df,
+         sumPgroupSimulation_df ,sum_all_simulation_lines_df,
+         PercentagePS_df, PercentagePM_df, PercentagePMS_df, LongtermES_df,parallel_list_branch_df,measur_Rparalle_data_list_df, stat_Rparalle_data_list_df, FileName_df],
         axis=1, ignore_index=True)
 
     # Create a sample DataFrame
     result_df2 = pd.DataFrame({'Current Branch': result_df[0][:],
                                'Relative Branch': result_df[1][:],
-                               'ClosestX': result_df[2][:],
-                               'ClosestY': result_df[3][:],
-                               'Shortest Distance': result_df[4][:],
-                               'Branch Length': result_df[5][:],
-                               'Branch Angle Base': result_df[6][:],
-                               'Branch PointsX': result_df[7][:],
-                               'Branch PointsY': result_df[8][:],
-                               'Compound Branches': result_df[9][:],
-                               'Detached Branches': result_df[10][:],
-                               'Cleaned Retained Branches': result_df[11][:],
-                               'Image File Processed': result_df[12][:]})
+                               'Closest X': result_df[2][:],
+                               'Closest Y': result_df[3][:],
+                               'Shortest Distance[µm]': result_df[4][:],
+                               'Branch Length[µm]': result_df[5][:],
+                               'Branch Angle[°]': result_df[6][:],
+                               'Branch First Point': result_df[7][:],
+                               'Branch Last Point': result_df[8][:],
+                               'Detached Branches': result_df[9][:],
+                               'Measured-Number of Parallels Groups': result_df[10][:],
+                               'Measured- Number of Parallels Lines': result_df[11][:],
+                               'Simulation- Number of Parallels Groups': result_df[12][:],
+                               'Simulation- Number of Parallels Lines': result_df[13][:],
+                               'Percentage of simulation parallelism': result_df[14][:],
+                               'Measurement Parallelism Percentage': result_df[15][:],
+                               'Percentage of Parallelism of Measurement Relative to Simulation': result_df[16][:],
+                               'Weights Ratio in the Long-term Of (E)\(S)': result_df[17][:],
+                               'Parallels Groups List': result_df[18][:],
+                               'Measured VALUE': result_df[19][:],
+                               'Measured FREQUENCY ': result_df[20][:],
+                               'Simulation VALUE': result_df[21][:],
+                               'Simulation FREQUENCY ': result_df[22][:],
+                               'Image File Processed': result_df[23][:],
+                               })
 
     # Save the DataFrame to a CSV file
     result_df2.to_csv(csv_file_path, index=False)
-    print(f'Data has been saved to {csv_file_path}')
-    save_Framed_images()
+    print(f'\nData has been saved to {csv_file_path}')
 
+    save_Framed_images()
     create_graphs(BRLengths, Angles)
+
+    # Input file path (change this to your actual file path)
+    # Get folder path, file name, and extension
+    folder_path, file_name_with_extension = os.path.split(file_path)
+    file_name_without_extension, file_extension = os.path.splitext(file_name_with_extension)
+
+    # Create a new CSV file name with the same name as the original file
+    new_file_name2 = file_name_without_extension +" Dendrites Groups" + ".csv"
+
+    # Create the full path for the new CSV file
+    csv_file_path2 = os.path.join(folder_path, new_file_name2)
+
+    # Open the CSV file for writing
+    with open(csv_file_path2, 'w', newline='') as csv_file:
+        csv_writer = csv.writer(csv_file)
+
+        # Write the header
+        csv_writer.writerow(["Set", "Branch Key", "Angle[°]", "First Point", "Last Point", "Length[µm]"])
+
+        # Iterate through the data and write to CSV
+        for i in range(0, len(parallel_list_all_branch), 2):
+            # Check if there are enough elements in data_list
+            if i + 1 < len(parallel_list_all_branch):
+                keys = parallel_list_all_branch[i]
+                parallel_data = parallel_list_all_branch[i + 1]
+                branches = parallel_data['Branches']
+
+                for branch in branches:
+                    key = branch['Key']
+                    angle = "{:.2f}".format(branch['Angle'])
+                    first_point = branch['First Point']
+                    last_point = branch['Last Point']
+                    length = "{:.2f}".format(branch['Length'])
+                    csv_writer.writerow([i // 2 + 1, key, angle, first_point, last_point, length])
+
+
 
 
 ######################################################################################################################################################################################
@@ -857,7 +989,7 @@ def create_graphs(BRLengths, Angles):
     plt.bar(range(len(BRLengths)), BRLengths)
     # Add labels and a title
     plt.xlabel(' Branches')
-    plt.ylabel('Length in Unit Pixels')
+    plt.ylabel('Length in Unit Pixels [µm]')
     plt.title('Branch Length Distribution')
     # Calculate and display average and standard deviation for branch lengths
     avg_length = np.mean(BRLengths)
@@ -872,7 +1004,7 @@ def create_graphs(BRLengths, Angles):
     plt.bar(range(len(Angles)), Angles)
     # Add labels and a title
     plt.xlabel(' Branches')
-    plt.ylabel('Angle in Degrees with Horizontal Base')
+    plt.ylabel('Angle in Degrees with Horizontal Base[°]')
     plt.title('Angular Distribution')
     # Calculate and display average and standard deviation for branch angles
     avg_angle = np.mean(Angles)
@@ -904,6 +1036,7 @@ def plot_contours(CC):
         y = XY[:, 1]
         # Plot the contour with a label
         plt.plot(x, y)
+
     # Add a legend to the plot
     plt.legend()
     ax.invert_yaxis()
@@ -935,8 +1068,6 @@ def disp_final_stats(num_lines, value_counts, gbcountRANDOM):
     PercentagePMS = sum_all_measured_lines / sum_all_simulation_lines
     print("E\S: ", PercentagePMS)
 
-    # Use Counter to count the occurrences of each value
-
     print('\n', "<---------------  Long - term  parallels of E\S: --------------->", '\n')
     # simulation with weights - in the long term
     sum_all_simulation_lines_weights = 0
@@ -948,37 +1079,9 @@ def disp_final_stats(num_lines, value_counts, gbcountRANDOM):
     for value, frequency in value_counts.items():
         sum_all_measured_lines_weights += value * value * frequency
     LongtermES = sum_all_measured_lines_weights / sum_all_simulation_lines_weights
-    print("\n Weights Ratio in the long term\n Measured (E) \ Simulation (S): ", LongtermES)
+    print("Weights Ratio in the long term\n Measured (E) \ Simulation (S): ", LongtermES)
 
-    """
-    value_counts = Counter(gbcount)
-    value_counts_dict = dict(value_counts)
-    weights = []
-    # Print the unique values and their occurrence frequency
-    for value, frequency in value_counts_dict.items():
-        thisweight = value * frequency
-        weights.append(thisweight)
-    NE = sum(weights)
-
-    weightsR = []
-    # Use Counter to count the occurrences of each value
-    value_countsR = Counter(gbcountRANDOM)
-    # Convert the result to a dictionary for easy access
-    value_counts_dictR = dict(value_countsR)
-    weightsR = []
-    # Print the unique values and their occurrence frequency
-    for valueR, frequencyR in value_counts_dictR.items():
-        thisweightR = valueR * frequencyR
-        weightsR.append(thisweightR)
-    NS = sum(weightsR)
-
-    NSERatio = NE / NS
-     
-    print(f" PM Percentage is ----------- {PercentagePM}")
-    print(f" PS Percentage is ............{PercentagePS}")
-    print(f" Weights Ratio computed is .... {NSERatio}")
-    """
-    return
+    return PercentagePS, PercentagePM, PercentagePMS, LongtermES, sum_all_measured_lines, sum_all_simulation_lines
 
 
 # Function to calculate the width and height of the image based on monitor resolution
