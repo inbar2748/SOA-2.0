@@ -47,24 +47,36 @@ This guide will help you set up Python and install all required packages for the
 
 ## Step 3: Installing Required Packages
 
-1. Create requirements.txt:
-   - Create a new file in your project folder called `requirements.txt`
-   - Copy and paste these lines into it:
-     ```
-     opencv-python>=4.6.0,<4.7.0
-     numpy>=1.24.3,<1.25.0
-     Pillow>=9.4.0,<9.5.0
-     scikit-image>=0.19.3,<0.20.0
-     ```
-
-2. Install the packages:
+1. Install the packages:
    - Make sure your virtual environment is activated (you should see `(venv)` at the start of the command line)
    - Type:
      ```
      pip install -r requirements.txt
      ```
    - Wait for all packages to install (this might take a few minutes)
+    
+## Step 4: Running the Application
 
+1. Make sure you're ready to run:
+   - Your virtual environment should be activated (you should see `(venv)` at the start)
+   - You should be in your project folder in Command Prompt
+   - Your Python file should be in the project folder
+
+2. Run the application:
+   - If your file is named `app.py`, type:
+     ```
+     python app.py
+     ```
+   - If your file has a different name, replace `app.py` with your file name
+   - The program should start running!
+
+3. Closing the application:
+   - When you're done, you can press `Ctrl + C` to stop the program
+   - To deactivate the virtual environment, type:
+     ```
+     deactivate
+     ```
+     
 ## Troubleshooting
 
 If you get any errors:
