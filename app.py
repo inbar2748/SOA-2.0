@@ -18,19 +18,16 @@ from statistical_calc import binomial_distribution
 ######################################################################################################################################################################################
 BRANCHLENGTH_THRESHOLD = 5
 NUMBER_OF_PHOTOS = 4
-global contours3
 global BRLengths
-global Logs_df
-global BL_df
-global Angles_df
 global actual_image
 global segment_image
 global skele_image
+global DD
+
 BRLengths = []
-contours3 = []
 Logs = []
 CC=[]
-
+DD = []
 
 ######################################################################################################################################################################################
 def load_image():
@@ -331,9 +328,9 @@ def create_segmentation2():
     global CC
     CC.clear()
     DD.clear()
-    Angles.clear()
     Logs.clear()
-    BINOMIAL_LINES.clear()
+    BRLengths.clear()
+
 
     CC = create_segmentation()
     # Call the function to find unique rows in contours2
@@ -371,11 +368,8 @@ def find_nearest_point(point, curve1):
 
 
 ######################################################################################################################################################################################
-global Angles, DD, BINOMIAL_LINES
-Angles = []
-DD = []
-Logs = []
-BINOMIAL_LINES = []
+
+
 
 
 ######################################################################################################################################################################################
